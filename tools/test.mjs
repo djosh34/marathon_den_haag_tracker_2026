@@ -22,7 +22,7 @@ async function open(time) {
   await page.waitForTimeout(8000); // software WebGL in the container needs a while to paint
   return page;
 }
-const badges = (page) => page.$$eval('.badge', (b) => b.map((x) => x.textContent).join(' | '));
+const badges = (page) => page.$$eval('.badge:not([hidden])', (b) => b.map((x) => x.textContent).join(' '));
 
 // First visit installs the service worker and caches everything.
 await (await open('07:00')).close();
@@ -30,17 +30,23 @@ await (await open('07:00')).close();
 for (const t of times) {
   const page = await open(`${t}:00`);
   await page.screenshot({ path: `screenshots/iphone17pro-${t.replace(':', '')}.png` });
-  console.log(`${t}: clock ${await page.textContent('#clock')}, badges: ${await badges(page)}`);
+  console.log(`${t}: ${await page.textContent('#clock')} "${await page.textContent('#summary')}" "${await page.textContent('#next')}" badges: ${await badges(page)}`);
+  if (t === '11:30') {
+    await page.click('#handle');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'screenshots/iphone17pro-1130-list.png' });
+  }
   await page.close();
 }
 
 // Live: closure 12 closes at 10:30. Open at 10:29:40 and let 35 real seconds pass.
 const live = await open('10:29:40');
-const before = await live.$eval('#rows li:first-child .sub', (e) => e.textContent);
+const row12 = (page) => page.$$eval('#rows li', (l) => l.find((e) => e.textContent.includes('Closed 10:30')).querySelector('.left').textContent);
+const before = await row12(live);
 await live.waitForTimeout(35e3);
-const after = await live.$$eval('#rows li .sub', (l) => l.map((e) => e.textContent).find((t) => t.startsWith('closed 10:30')));
+const after = await row12(live);
 await live.screenshot({ path: 'screenshots/iphone17pro-live-1030.png' });
-console.log(`live: first row before "${before}", closure 12 after "${after}"`);
+console.log(`live: closure 12 before "${before}", after "${after}"`);
 const liveOk = after.includes('opens in');
 
 // Offline: every response after the reload must come from the service worker.
