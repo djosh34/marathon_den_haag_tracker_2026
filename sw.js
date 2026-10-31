@@ -1,12 +1,13 @@
 // Bump VERSION to ship an update. Every file is cached at install and served from the cache only.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const FONTS = ['Noto Sans Regular', 'Noto Sans Medium', 'Noto Sans Italic'].flatMap((f) =>
   ['0-255', '256-511', '8192-8447'].map((r) => `map/fonts/${f}/${r}.pbf`));
 const FILES = [
   './', 'index.html', 'style.css', 'app.js', 'data.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png',
   'vendor/maplibre-gl.mjs', 'vendor/maplibre-gl-worker.mjs', 'vendor/maplibre-gl.css', 'vendor/pmtiles.js',
   'map/hague.pmtiles', 'map/layers.json',
-  'map/sprites/light.json', 'map/sprites/light.png', 'map/sprites/light@2x.json', 'map/sprites/light@2x.png',
+  'map/sprites/grayscale.json', 'map/sprites/grayscale.png', 'map/sprites/grayscale@2x.json', 'map/sprites/grayscale@2x.png',
+  'fonts/overpass-latin.woff2',
   ...FONTS,
 ];
 
