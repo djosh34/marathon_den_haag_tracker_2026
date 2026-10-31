@@ -87,6 +87,24 @@ const runnerOk = allKm === 16 && r1230.includes('Between km') && r1230late !== r
 await rv.evaluate(() => localStorage.clear());
 await rv.close();
 
+// Location: a dot inside The Hague, a message instead of silence outside the offline map.
+await context.grantPermissions(['geolocation']);
+const geoAt = async (name, geo) => {
+  await context.setGeolocation(geo);
+  const page = await open('07:00:00');
+  await page.click('.maplibregl-ctrl-geolocate');
+  await page.waitForTimeout(5000);
+  const dots = await page.$$eval('.maplibregl-user-location-dot', (d) => d.length);
+  const toast = await page.$eval('#toast', (t) => (t.hidden ? '' : t.textContent));
+  await page.screenshot({ path: `screenshots/iphone17pro-location-${name}.png` });
+  await page.close();
+  console.log(`location ${name}: dots ${dots}, message "${toast}"`);
+  return { dots, toast };
+};
+const geoIn = await geoAt('hague', { latitude: 52.0799, longitude: 4.3113 });
+const geoOut = await geoAt('amsterdam', { latitude: 52.37, longitude: 4.89 });
+const geoOk = geoIn.dots === 1 && !geoIn.toast && geoOut.dots === 0 && geoOut.toast.includes('km from the course');
+
 // Live: closure 12 closes at 10:30. Open at 10:29:40 and let 35 real seconds pass.
 const live = await open('10:29:40');
 const row12 = (page) => page.$$eval('#rows li', (l) => l.find((e) => e.textContent.includes('Closed 10:30')).querySelector('.left').textContent);
@@ -116,4 +134,5 @@ console.log(errors.length ? `errors:\n  ${errors.join('\n  ')}` : 'errors: none'
 
 await browser.close();
 console.log(`runner view: ${runnerOk ? 'ok' : 'FAILED'}`);
-process.exit(rows === 19 && network.length === 0 && liveOk && runnerOk ? 0 : 1);
+console.log(`location: ${geoOk ? 'ok' : 'FAILED'}`);
+process.exit(rows === 19 && network.length === 0 && liveOk && runnerOk && geoOk ? 0 : 1);

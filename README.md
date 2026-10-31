@@ -19,4 +19,4 @@ podman run --rm --network host --ipc host -v "$PWD":/work:Z -w /work \
   mcr.microsoft.com/playwright:v1.64.1-noble node tools/test.mjs
 ```
 
-The test runs Playwright WebKit with the `iPhone 17 Pro` profile. It writes screenshots at race-day times to `screenshots/`, checks the time-travel slider and the runner view (range, km markers, settings), checks that a closure changes live, and reloads offline expecting zero network requests.
+The test runs Playwright WebKit with the `iPhone 17 Pro` profile. It writes screenshots at race-day times to `screenshots/`, checks the time-travel slider, the runner view (range, km markers, settings) and the location button, checks that a closure changes live, and reloads offline expecting zero network requests.
