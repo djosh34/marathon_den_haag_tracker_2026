@@ -64,7 +64,7 @@ body {
   box-shadow: 0 0 0 1.5px #fff; pointer-events: none;
 }
 
-/* Course km markers: only in the runner view, every 10 km, every 2.5 km when zoomed in. */
+/* Course km markers, every 2.5 km, only in the runner view. */
 .km {
   display: none; padding: 1px 3px 0; border-radius: 3px; background: var(--ink); color: #fff;
   font: 700 10px/1.25 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
@@ -72,7 +72,7 @@ body {
 }
 .km.major { font-size: 12px; padding: 1px 4px 0; }
 .runner .badge { display: none; }
-.runner .km.major, .runner.near .km { display: block; }
+.runner .km { display: block; }
 .runner .roads-only, body:not(.runner) .runner-only { display: none; }
 
 #sheet {
@@ -82,18 +82,7 @@ body {
   transform: translateY(0); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 #sheet.collapsed { transform: translateY(calc(62dvh - var(--sheet-peek))); }
-@media (prefers-reduced-motion: reduce) { /* Course km markers: only in the runner view, every 10 km, every 2.5 km when zoomed in. */
-.km {
-  display: none; padding: 1px 3px 0; border-radius: 3px; background: var(--ink); color: #fff;
-  font: 700 10px/1.25 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 1.5px #fff; pointer-events: none;
-}
-.km.major { font-size: 12px; padding: 1px 4px 0; }
-.runner .badge { display: none; }
-.runner .km.major, .runner.near .km { display: block; }
-.runner .roads-only, body:not(.runner) .runner-only { display: none; }
-
-#sheet { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #sheet { transition: none; } }
 
 #handle {
   display: grid; gap: 0 12px; grid-template-columns: 1fr; padding: 8px 16px 10px; border: 0;
