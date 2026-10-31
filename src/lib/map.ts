@@ -141,6 +141,8 @@ export async function createMap(container: HTMLElement, view: View, onChunk: (n:
       for (const [id, paint] of Object.entries(paints(view))) {
         for (const [property, value] of Object.entries(paint)) map.setPaintProperty(id, property as keyof Paint, value);
       }
+      // WebKit sometimes keeps showing the old frame after a paint change; a later render does show it.
+      setTimeout(() => map.triggerRepaint(), 1000);
     }
     for (const c of data.closures) {
       const st = status(c, view.now);
