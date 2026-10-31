@@ -39,6 +39,18 @@ for (const t of times) {
   await page.close();
 }
 
+// Time travel: open live at 07:00, then slide to 13:30.
+const tt = await open('07:00:00');
+await tt.click('#clock');
+await tt.$eval('#slider', (s) => { s.value = Date.parse('2026-11-01T13:30:00+01:00'); s.dispatchEvent(new Event('input')); });
+await tt.waitForTimeout(3000);
+await tt.screenshot({ path: 'screenshots/iphone17pro-timetravel-1330.png' });
+const ttText = `${await tt.textContent('#clock')} "${await tt.textContent('#summary')}"`;
+await tt.click('#live');
+await tt.waitForTimeout(500);
+console.log(`time travel: slider to 13:30 shows ${ttText}, back to live shows ${await tt.textContent('#clock')}`);
+await tt.close();
+
 // Live: closure 12 closes at 10:30. Open at 10:29:40 and let 35 real seconds pass.
 const live = await open('10:29:40');
 const row12 = (page) => page.$$eval('#rows li', (l) => l.find((e) => e.textContent.includes('Closed 10:30')).querySelector('.left').textContent);

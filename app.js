@@ -3,7 +3,7 @@ import data from './data.js';
 
 // Open chunks are shaded by minutes until they close: signage blue far off, orange when close.
 const RAMP = [[0, '#ff5a00'], [30, '#ffb000'], [90, '#3d8bd9'], [240, '#1c4e8a']];
-const TAPE = '#e30613', GONE = '#9aa0a6';
+const CLOSED = '#e30613', GONE = '#9aa0a6';
 
 // Where a closure stands at time `now`: its state and the next change.
 function status(c, now) {
@@ -81,15 +81,18 @@ async function start() {
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
   const line = (coords, props = {}) => ({ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: coords } });
-  const chunks = (now) => ({
-    type: 'FeatureCollection',
-    features: data.closures.map((c, i) => {
-      const st = status(c, now);
-      return line(c.line, { i, state: st.state, mins: st.mins });
-    }),
-  });
+  const chunks = { type: 'FeatureCollection', features: data.closures.map((c, i) => line(c.line, { i })) };
+  // One layer per chunk with constant paint: changing it redraws at once, without re-processing tiles
+  // in the worker (after which WebKit does not always repaint).
+  const chunkIds = data.closures.map((c, i) => `chunk-${i}`);
+  const paint = (c, now) => {
+    const st = status(c, now);
+    return {
+      'line-color': { open: rampColor(st.mins), closed: CLOSED, done: GONE }[st.state],
+      'line-width': { open: 4, closed: 4.5, done: 3 }[st.state],
+    };
+  };
   const round = { 'line-join': 'round', 'line-cap': 'round' };
-  const state = (s) => ['==', ['get', 'state'], s];
   const other = { 'line-color': '#8a7bb0', 'line-width': 2, 'line-dasharray': [2.5, 1.5] };
 
   // The course layers are part of the initial style, so they draw with the first frame.
@@ -105,21 +108,16 @@ async function start() {
         '10k': { type: 'geojson', data: line(data.routes['10k']) },
         '5k': { type: 'geojson', data: line(data.routes['5k']) },
         marathon: { type: 'geojson', data: line(data.routes.marathon) },
-        chunks: { type: 'geojson', data: chunks(Date.now()) },
+        chunks: { type: 'geojson', data: chunks },
       },
       layers: [
         ...layers,
         { id: '10k', type: 'line', source: '10k', paint: other },
         { id: '5k', type: 'line', source: '5k', paint: other },
-        { id: 'casing', type: 'line', source: 'marathon', layout: round, paint: { 'line-color': '#fff', 'line-width': 11 } },
-        { id: 'open', type: 'line', source: 'chunks', filter: state('open'), layout: round, paint: {
-          'line-color': ['interpolate', ['linear'], ['get', 'mins'], ...RAMP.flat()], 'line-width': 6,
-        } },
-        { id: 'done', type: 'line', source: 'chunks', filter: state('done'), layout: round,
-          paint: { 'line-color': GONE, 'line-width': 4 } },
-        { id: 'closed', type: 'line', source: 'chunks', filter: state('closed'), paint: { 'line-color': TAPE, 'line-width': 7 } },
-        { id: 'closed-stripes', type: 'line', source: 'chunks', filter: state('closed'),
-          paint: { 'line-color': '#fff', 'line-width': 7, 'line-dasharray': [1, 1] } },
+        { id: 'casing', type: 'line', source: 'marathon', layout: round, paint: { 'line-color': '#fff', 'line-width': 7 } },
+        ...data.closures.map((c, i) => ({
+          id: chunkIds[i], type: 'line', source: 'chunks', filter: ['==', ['get', 'i'], i], layout: round, paint: paint(c, Date.now()),
+        })),
       ],
     },
     bounds,
@@ -129,7 +127,8 @@ async function start() {
   });
   document.getElementById('loading').remove();
   map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }));
-  map.on('load', () => update());
+  let loaded = false;
+  map.on('load', () => { loaded = true; update(); });
 
   const sheet = document.getElementById('sheet');
   const handle = document.getElementById('handle');
@@ -155,29 +154,47 @@ async function start() {
     return { c, badge, li };
   });
 
-  for (const id of ['open', 'done', 'closed']) {
-    map.on('click', id, (e) => {
-      const { li } = items[e.features[0].properties.i];
-      expand(true);
-      for (const it of items) it.li.classList.toggle('flash', it.li === li);
-      li.scrollIntoView({ block: 'center' });
-    });
-    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
-  }
+  map.on('click', chunkIds, (e) => {
+    const { li } = items[e.features[0].properties.i];
+    expand(true);
+    for (const it of items) it.li.classList.toggle('flash', it.li === li);
+    li.scrollIntoView({ block: 'center' });
+  });
+
+  // Time travel: when `travel` is set, the whole page shows that moment instead of now.
+  let travel = null;
+  const clock = document.getElementById('clock');
+  const panel = document.getElementById('travel');
+  const slider = document.getElementById('slider');
+  const [dayStart, dayEnd] = [Date.parse('2026-11-01T04:00:00+01:00'), Date.parse('2026-11-01T22:00:00+01:00')];
+  slider.min = dayStart; slider.max = dayEnd; slider.step = 5 * 60e3;
+  const setTravel = (t) => {
+    travel = t;
+    document.body.classList.toggle('travelling', t !== null);
+    panel.hidden = t === null;
+    clock.setAttribute('aria-expanded', t !== null);
+    if (t !== null) slider.value = t;
+    update();
+  };
+  clock.onclick = () => setTravel(travel === null ? Math.min(Math.max(Date.now(), dayStart), dayEnd) : null);
+  slider.oninput = () => setTravel(Number(slider.value));
+  document.getElementById('live').onclick = () => setTravel(null);
 
   function update() {
-    const now = Date.now();
-    document.getElementById('clock').textContent = clockFmt.format(now);
-    map.getSource('chunks')?.setData(chunks(now));
+    const now = travel ?? Date.now();
+    clock.textContent = clockFmt.format(now);
+    if (loaded) {
+      data.closures.forEach((c, i) => {
+        for (const [k, v] of Object.entries(paint(c, now))) map.setPaintProperty(chunkIds[i], k, v);
+      });
+    }
     const sorted = items.map((it) => ({ ...it, st: status(it.c, now) })).sort((a, b) => a.st.next - b.st.next || a.c.n - b.c.n);
     for (const { c, badge, li, st } of sorted) {
       const t = left(st.next - now);
       badge.hidden = st.state !== 'closed';
       badge.textContent = t;
       const swatch = li.querySelector('.swatch');
-      swatch.classList.toggle('tape', st.state === 'closed');
-      swatch.style.background = st.state === 'open' ? rampColor(st.mins) : st.state === 'done' ? GONE : '';
+      swatch.style.background = { open: rampColor(st.mins), closed: CLOSED, done: GONE }[st.state];
       li.classList.toggle('done', st.state === 'done');
       li.querySelector('.left').innerHTML = st.state === 'done' ? '<small>reopened</small>' : `<small>${st.text}</small>${t}`;
       rows.appendChild(li);

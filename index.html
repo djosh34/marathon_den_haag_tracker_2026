@@ -19,7 +19,11 @@
 </head>
 <body>
 <div id="map"><p id="loading">Loading the offline map</p></div>
-<time id="clock"></time>
+<button id="clock" aria-expanded="false" aria-controls="travel" aria-label="Clock. Tap to look at another time"></button>
+<div id="travel" hidden>
+  <input id="slider" type="range" aria-label="Time on race day">
+  <button id="live">Back to live</button>
+</div>
 <section id="sheet" class="collapsed" aria-label="Road closures">
   <button id="handle" aria-expanded="false" aria-controls="details">
     <span class="grip"></span>
@@ -28,7 +32,7 @@
   </button>
   <div id="details">
     <div class="legend">
-      <span class="tape"></span><span>closed</span>
+      <span class="closed"></span><span>closed</span>
       <span class="ramp"></span><span>open, closes in 0m to 4h</span>
       <span class="gone"></span><span>reopened</span>
       <span class="other"></span><span>10K and 5K</span>
