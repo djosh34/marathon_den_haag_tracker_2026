@@ -77,7 +77,7 @@ console.log(`runner zoomed in: km: ${await kms(rv)}`);
 // Settings: a later start moves the range back.
 await rv.click('#handle');
 await rv.waitForTimeout(600);
-await rv.fill('#settings [name=start]', '10:45');
+await rv.selectOption('#settings [name=start]', '10:45');
 await rv.waitForTimeout(1500);
 await rv.screenshot({ path: 'screenshots/iphone17pro-runner-settings.png' });
 const r1230late = `"${await rv.textContent('#summary')}" "${await rv.textContent('#next')}"`;
