@@ -9,7 +9,7 @@ export default defineConfig({
     sveltekit({
       adapter: adapter(),
       // GitHub Pages serves the site from /marathon_den_haag_tracker_2026; local builds use the root.
-      paths: { base: process.env.BASE_PATH ?? '' },
+      paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` },
       // Registered by the page, which waits for it to take control before loading the map.
       serviceWorker: { register: false },
     }),

@@ -1,37 +1,48 @@
-<script>
+<script lang="ts">
   import '../app.css';
   import { onMount, tick } from 'svelte';
-  import data from '../lib/data.js';
-  import { status, color, left, hhmm, clock, DAY_START, DAY_END } from '../lib/time.js';
-  import { DEFAULTS, TIMES, adjust, range, summary as runnerSummary, paceLine } from '../lib/runner.js';
-  import { serviceWorker } from '../lib/sw.js';
+  import data from '../lib/data';
+  import { status, color, left, clock, DAY_START, DAY_END } from '../lib/time';
+  import { DEFAULTS, TIMES, adjust, range, summary as runnerSummary, paceLine, type Runner } from '../lib/runner';
+  import { serviceWorker } from '../lib/sw';
+  import type { MapApi, Mode } from '../lib/map';
 
-  const stored = (key, fallback) => {
-    try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
-  };
+  function stored<T>(key: string, fallback: T): T {
+    try { return JSON.parse(localStorage.getItem(key)!) ?? fallback; } catch { return fallback; }
+  }
 
   // Time travel: when `travel` is set, the whole page shows that moment instead of now.
   let live = $state(Date.now());
-  let travel = $state(null);
+  let travel = $state<number | null>(null);
   const now = $derived(travel ?? live);
-  let mode = $state(stored('mode', 'roads') === 'runner' ? 'runner' : 'roads');
-  let runner = $state({ ...DEFAULTS, ...stored('runner', {}) });
+  let mode = $state<Mode>(stored<string>('mode', 'roads') === 'runner' ? 'runner' : 'roads');
+  let runner = $state.raw<Runner>({ ...DEFAULTS, ...stored('runner', {}) });
   let expanded = $state(false);
-  let flash = $state(null);
-  let update = $state(null); // a waiting service worker
-  let map = $state.raw(null);
-  let container;
+  let flash = $state<number | null>(null); // the closure whose chunk was tapped
+  let update = $state<ServiceWorker | null>(null); // a waiting service worker
+  let map = $state.raw<MapApi | null>(null);
+  let container: HTMLDivElement;
 
   $effect(() => localStorage.setItem('mode', JSON.stringify(mode)));
   $effect(() => localStorage.setItem('runner', JSON.stringify(runner)));
-  $effect(() => map?.update({ now, mode, runner: { ...runner } }));
+  $effect(() => map?.update({ now, mode, runner }));
 
   const rows = $derived(
     data.closures.map((c) => ({ c, st: status(c, now) })).sort((a, b) => a.st.next - b.st.next || a.c.n - b.c.n),
   );
   const closed = $derived(rows.filter((r) => r.st.state === 'closed').length);
   const upcoming = $derived(rows.find((r) => r.st.state !== 'done'));
-  const where = $derived(range(runner, now));
+
+  const summary = $derived.by(() => {
+    if (mode === 'runner') return runnerSummary(range(runner, now));
+    if (closed) return `${closed} of ${rows.length} roads closed`;
+    return upcoming ? 'All roads open' : 'All roads reopened';
+  });
+  const next = $derived.by(() => {
+    if (mode === 'runner') return paceLine(runner);
+    if (!upcoming) return 'The marathon is over. Drive safe.';
+    return `Next: ${upcoming.c.streets.split(' / ')[0]} ${upcoming.st.text} ${left(upcoming.st.next - now)}`;
+  });
 
   onMount(() => {
     const tickLive = () => (live = Date.now());
@@ -40,14 +51,12 @@
     document.addEventListener('visibilitychange', visible);
     (async () => {
       await serviceWorker((sw) => (update = sw));
-      const { createMap } = await import('../lib/map.js');
-      map = await createMap(container, { now, mode, runner: { ...runner } }, {
-        onChunk: async (i) => {
-          expanded = true;
-          flash = i;
-          await tick();
-          document.querySelector(`#rows li[data-i="${i}"]`)?.scrollIntoView({ block: 'center' });
-        },
+      const { createMap } = await import('../lib/map');
+      map = await createMap(container, { now, mode, runner }, async (n) => {
+        expanded = true;
+        flash = n;
+        await tick();
+        document.querySelector(`#rows li[data-i="${n}"]`)?.scrollIntoView({ block: 'center' });
       });
     })();
     return () => {
@@ -56,10 +65,13 @@
     };
   });
 
-  const toggleTravel = () => (travel = travel === null ? Math.min(Math.max(Date.now(), DAY_START), DAY_END) : null);
+  function toggleTravel() {
+    travel = travel === null ? Math.min(Math.max(Date.now(), DAY_START), DAY_END) : null;
+  }
   // The 24h choices, plus a saved time that is not on the list.
-  const options = (value) => (TIMES.includes(value) ? TIMES : [...TIMES, value].sort());
-  const setRunner = (key) => (e) => (runner = adjust(runner, key, e.currentTarget.value));
+  const options = (value: string) => (TIMES.includes(value) ? TIMES : [...TIMES, value].sort());
+  const modes: [Mode, string][] = [['roads', 'Roads'], ['runner', 'Runner']];
+  const settings: [keyof Runner, string][] = [['start', 'Start'], ['from', 'Finish from'], ['until', 'Finish until']];
   const pill = 'rounded-lg border-0 bg-ink text-white font-extrabold';
 </script>
 
@@ -79,7 +91,7 @@
     onclick={toggleTravel}
   >{clock(now)} <span class="text-xs font-semibold tracking-normal opacity-70">{travel === null ? 'live' : 'preview'}</span></button>
   <div class="flex rounded-lg bg-ink p-[3px] text-sm font-bold" role="group" aria-label="View">
-    {#each [['roads', 'Roads'], ['runner', 'Runner']] as [value, label] (value)}
+    {#each modes as [value, label] (value)}
       <button
         id="mode-{value}"
         class="rounded-md border-0 px-2.5 pt-1.5 pb-1 {mode === value ? 'bg-paper text-ink' : 'bg-transparent text-white/80'}"
@@ -115,14 +127,8 @@
 >
   <button id="handle" class="grid border-0 bg-transparent px-4 pt-2 pb-2.5 text-left text-inherit" aria-expanded={expanded} aria-controls="details" onclick={() => (expanded = !expanded)}>
     <span class="mb-1.5 h-[5px] w-10 justify-self-center rounded-sm bg-[#c4c7c9]"></span>
-    <strong id="summary" class="text-xl/[1.15] font-extrabold">
-      {#if mode === 'runner'}{runnerSummary(where)}
-      {:else}{closed ? `${closed} of ${rows.length} roads closed` : upcoming ? 'All roads open' : 'All roads reopened'}{/if}
-    </strong>
-    <span id="next" class="truncate text-[15px] text-muted">
-      {#if mode === 'runner'}{paceLine(runner)}
-      {:else}{upcoming ? `Next: ${upcoming.c.streets.split(' / ')[0]} ${upcoming.st.text} ${left(upcoming.st.next - now)}` : 'The marathon is over. Drive safe.'}{/if}
-    </span>
+    <strong id="summary" class="text-xl/[1.15] font-extrabold">{summary}</strong>
+    <span id="next" class="truncate text-[15px] text-muted">{next}</span>
   </button>
   <div id="details" class="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
     <div class="grid grid-cols-[26px_1fr_26px_1fr] items-center gap-x-2 gap-y-1.5 border-b border-[#d9dadb] pt-2.5 pb-3 text-[13px] text-muted">
@@ -146,27 +152,27 @@
             class:done
             onclick={() => { expanded = false; map?.flyTo(c.label); }}
           >
-            <span class="row-span-2 self-stretch rounded" style:background={color(st)}></span>
+            <span class="row-span-2 self-stretch rounded" style:background={color(st, now)}></span>
             <span class="streets text-[15px]/[1.25] {done ? 'font-semibold text-muted' : 'font-bold'}">{c.streets}</span>
             <span class="left row-span-2 text-right text-[19px] {done ? 'font-semibold text-muted' : 'font-extrabold'}">
               {#if done}<small class="block text-[11px] font-semibold text-muted">reopened</small>
               {:else}<small class="block text-[11px] font-semibold text-muted">{st.text}</small>{left(st.next - now)}{/if}
             </span>
-            <span class="when text-[13px] text-muted">Closed {hhmm(c.close)} to {hhmm(c.open)}</span>
+            <span class="when text-[13px] text-muted">Closed {c.close} to {c.open}</span>
           </li>
         {/each}
       </ol>
       <p class="max-w-[60ch] text-xs text-muted">Sunday 1 November 2026. Times from the official closure map are indicative: a road can close earlier or reopen later.</p>
     {:else}
       <div class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 py-3 text-[15px] font-bold">
-        {#each [['start', 'Start'], ['from', 'Finish from'], ['until', 'Finish until']] as [key, label] (key)}
+        {#each settings as [key, label] (key)}
           <label for="runner-{key}">{label}</label>
           <!-- A select, not <input type="time">, which shows AM/PM on phones set to 12h time. -->
           <select
             id="runner-{key}"
             class="rounded-lg border border-[#c4c7c9] bg-white px-2 py-1 font-sans text-[17px] tabular-nums"
             value={runner[key]}
-            onchange={setRunner(key)}
+            onchange={(e) => (runner = adjust(runner, key, e.currentTarget.value))}
           >
             {#each options(runner[key]) as t (t)}<option value={t}>{t}</option>{/each}
           </select>
@@ -178,5 +184,5 @@
 </section>
 
 {#if update}
-  <button id="update" class="fixed z-4 inset-x-3 top-[calc(env(safe-area-inset-top)+118px)] rounded-[10px] border-0 bg-sign p-[13px] text-[15px] font-bold text-white" onclick={() => update.postMessage('skipWaiting')}>New version ready. Tap to update.</button>
+  <button id="update" class="fixed z-4 inset-x-3 top-[calc(env(safe-area-inset-top)+118px)] rounded-[10px] border-0 bg-sign p-[13px] text-[15px] font-bold text-white" onclick={() => update?.postMessage('skipWaiting')}>New version ready. Tap to update.</button>
 {/if}
