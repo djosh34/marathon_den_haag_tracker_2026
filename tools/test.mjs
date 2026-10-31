@@ -51,6 +51,41 @@ await tt.waitForTimeout(500);
 console.log(`time travel: slider to 13:30 shows ${ttText}, back to live shows ${await tt.textContent('#clock')}`);
 await tt.close();
 
+// Runner view: the same slider, the course with the runner's range and km markers.
+const rv = await open('07:00:00');
+await rv.click('#mode [data-mode=runner]');
+await rv.click('#clock');
+const kms = (page) => page.$$eval('.km', (k) => k.filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.textContent).join(' '));
+const runnerAt = async (t, shot) => {
+  await rv.$eval('#slider', (s, t) => { s.value = Date.parse(`2026-11-01T${t}:00+01:00`); s.dispatchEvent(new Event('input')); }, t);
+  await rv.waitForTimeout(3000);
+  if (shot) await rv.screenshot({ path: `screenshots/iphone17pro-runner-${t.replace(':', '')}.png` });
+  const text = `"${await rv.textContent('#summary')}" "${await rv.textContent('#next')}"`;
+  console.log(`runner ${t}: ${text} km: ${await kms(rv)}`);
+  return text;
+};
+await runnerAt('10:00', true);
+await runnerAt('11:00', true);
+const r1230 = await runnerAt('12:30', true);
+await runnerAt('14:15', true);
+await runnerAt('15:00', false);
+const roadBadges = await rv.$$eval('.badge', (b) => b.filter((e) => getComputedStyle(e).display !== 'none').length);
+await runnerAt('12:30', false);
+for (let i = 0; i < 2; i++) { await rv.dblclick('#map canvas', { position: { x: 75, y: 380 } }); await rv.waitForTimeout(1500); }
+await rv.screenshot({ path: 'screenshots/iphone17pro-runner-1230-zoomed.png' });
+console.log(`runner zoomed in: km: ${await kms(rv)}`);
+// Settings: a later start moves the range back.
+await rv.click('#handle');
+await rv.waitForTimeout(600);
+await rv.fill('#settings [name=start]', '10:45');
+await rv.waitForTimeout(1500);
+await rv.screenshot({ path: 'screenshots/iphone17pro-runner-settings.png' });
+const r1230late = `"${await rv.textContent('#summary')}" "${await rv.textContent('#next')}"`;
+console.log(`runner settings: start 10:45 at 12:30 shows ${r1230late}, closure badges visible: ${roadBadges}`);
+const runnerOk = r1230.includes('Between km') && r1230late !== r1230 && roadBadges === 0;
+await rv.evaluate(() => localStorage.clear());
+await rv.close();
+
 // Live: closure 12 closes at 10:30. Open at 10:29:40 and let 35 real seconds pass.
 const live = await open('10:29:40');
 const row12 = (page) => page.$$eval('#rows li', (l) => l.find((e) => e.textContent.includes('Closed 10:30')).querySelector('.left').textContent);
@@ -79,4 +114,5 @@ network.forEach((u) => console.log('  network:', u));
 console.log(errors.length ? `errors:\n  ${errors.join('\n  ')}` : 'errors: none');
 
 await browser.close();
-process.exit(rows === 19 && network.length === 0 && liveOk ? 0 : 1);
+console.log(`runner view: ${runnerOk ? 'ok' : 'FAILED'}`);
+process.exit(rows === 19 && network.length === 0 && liveOk && runnerOk ? 0 : 1);

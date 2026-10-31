@@ -19,18 +19,25 @@
 </head>
 <body>
 <div id="map"><p id="loading">Loading the offline map</p></div>
-<button id="clock" aria-expanded="false" aria-controls="travel" aria-label="Clock. Tap to look at another time"></button>
+<div id="bar">
+  <button id="clock" aria-expanded="false" aria-controls="travel" aria-label="Clock. Tap to look at another time"></button>
+  <div id="mode" role="group" aria-label="View">
+    <button data-mode="roads" aria-pressed="true">Roads</button>
+    <button data-mode="runner" aria-pressed="false">Runner</button>
+  </div>
+</div>
 <div id="travel" hidden>
   <input id="slider" type="range" aria-label="Time on race day">
   <button id="live">Back to live</button>
 </div>
-<section id="sheet" class="collapsed" aria-label="Road closures">
+<section id="sheet" class="collapsed" aria-label="Details">
   <button id="handle" aria-expanded="false" aria-controls="details">
     <span class="grip"></span>
     <strong id="summary"></strong>
     <span id="next"></span>
   </button>
   <div id="details">
+    <div class="roads-only">
     <div class="legend">
       <span class="closed"></span><span>closed</span>
       <span class="ramp"></span><span>open, closes in 0m to 4h</span>
@@ -39,6 +46,19 @@
     </div>
     <ol id="rows"></ol>
     <p class="note">Sunday 1 November 2026. Times from the official closure map are indicative: a road can close earlier or reopen later.</p>
+    </div>
+    <form id="settings" class="runner-only">
+      <div class="legend">
+        <span class="range"></span><span>where the runner can be</span>
+        <span class="course"></span><span>marathon course</span>
+      </div>
+      <div class="fields">
+        <label>Start<input type="time" name="start" required></label>
+        <label>Finish from<input type="time" name="from" required></label>
+        <label>Finish until<input type="time" name="to" required></label>
+      </div>
+      <p class="note">The range assumes an even pace. Its front is the fastest finish, its back the slowest. Times are on Sunday 1 November and are saved on this phone.</p>
+    </form>
   </div>
 </section>
 <button id="update" hidden>New version ready. Tap to update.</button>

@@ -29,6 +29,29 @@ function left(ms) {
 }
 
 const hhmm = (iso) => iso.slice(11, 16);
+const raceDay = (hm) => Date.parse(`2026-11-01T${hm}:00+01:00`);
+const MARATHON = 42.195, RANGE = '#ff5a00';
+
+// The runner settings, saved on the phone. Finish times are kept after the start and in order.
+function loadRunner() {
+  const r = { start: '10:15', from: '14:00', to: '14:30', ...JSON.parse(localStorage.getItem('runner') || '{}') };
+  if (r.from <= r.start) r.from = r.start;
+  if (r.to < r.from) r.to = r.from;
+  return r;
+}
+
+// Where the runner can be at `now`, in km, at an even pace between the fastest and slowest finish.
+function runnerRange(r, now) {
+  const s = raceDay(r.start), f1 = raceDay(r.from), f2 = raceDay(r.to);
+  const km = (f) => Math.min(Math.max((now - s) / Math.max(f - s, 60e3), 0), 1) * MARATHON;
+  return { s, f1, f2, back: km(f2), front: km(f1) };
+}
+
+const pace = (ms) => {
+  const sec = Math.round(ms / 1e3 / MARATHON);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+};
+const kmText = (k) => k.toFixed(1);
 const clockFmt = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' });
 
 // Waits until the service worker controls the page, so the big map file is downloaded only once.
@@ -93,6 +116,31 @@ async function start() {
     };
   };
   const round = { 'line-join': 'round', 'line-cap': 'round' };
+
+  // The runner range is a gradient along the course, so moving it is a paint change only.
+  let mode = localStorage.getItem('mode') === 'runner' ? 'runner' : 'roads';
+  let runner = loadRunner();
+  const seen = (m) => ({ visibility: m === mode ? 'visible' : 'none' });
+  const gradient = (color, now) => {
+    const { back, front } = runnerRange(runner, now);
+    const clear = 'rgba(0,0,0,0)';
+    if (front - back < 0.01) return ['step', ['line-progress'], clear, 0.5, clear];
+    return ['step', ['line-progress'], clear, back / MARATHON, color, front / MARATHON, clear];
+  };
+
+  // Km markers along the course, scaled so the GPX length matches the official distance.
+  const pts = data.routes.marathon;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    cum.push(cum[i - 1] + Math.hypot((b[1] - a[1]) * 111.2, (b[0] - a[0]) * 111.2 * Math.cos(52.05 * Math.PI / 180)));
+  }
+  const at = (k) => {
+    const d = (k * cum.at(-1)) / MARATHON;
+    const i = cum.findIndex((c) => c >= d);
+    const t = (d - cum[i - 1]) / (cum[i] - cum[i - 1]);
+    return [0, 1].map((j) => pts[i - 1][j] + (pts[i][j] - pts[i - 1][j]) * t);
+  };
   const other = { 'line-color': '#8a7bb0', 'line-width': 2, 'line-dasharray': [2.5, 1.5] };
 
   // The course layers are part of the initial style, so they draw with the first frame.
@@ -107,17 +155,23 @@ async function start() {
         protomaps: { type: 'vector', url: 'pmtiles://hague', attribution: '© OpenStreetMap, Protomaps' },
         '10k': { type: 'geojson', data: line(data.routes['10k']) },
         '5k': { type: 'geojson', data: line(data.routes['5k']) },
-        marathon: { type: 'geojson', data: line(data.routes.marathon) },
+        marathon: { type: 'geojson', data: line(data.routes.marathon), lineMetrics: true },
         chunks: { type: 'geojson', data: chunks },
       },
       layers: [
         ...layers,
-        { id: '10k', type: 'line', source: '10k', paint: other },
-        { id: '5k', type: 'line', source: '5k', paint: other },
+        { id: '10k', type: 'line', source: '10k', layout: seen('roads'), paint: other },
+        { id: '5k', type: 'line', source: '5k', layout: seen('roads'), paint: other },
         { id: 'casing', type: 'line', source: 'marathon', layout: round, paint: { 'line-color': '#fff', 'line-width': 7 } },
         ...data.closures.map((c, i) => ({
-          id: chunkIds[i], type: 'line', source: 'chunks', filter: ['==', ['get', 'i'], i], layout: round, paint: paint(c, Date.now()),
+          id: chunkIds[i], type: 'line', source: 'chunks', filter: ['==', ['get', 'i'], i],
+          layout: { ...round, ...seen('roads') }, paint: paint(c, Date.now()),
         })),
+        { id: 'course', type: 'line', source: 'marathon', layout: { ...round, ...seen('runner') }, paint: { 'line-color': '#1d2226', 'line-width': 2.5 } },
+        { id: 'range-casing', type: 'line', source: 'marathon', layout: { ...round, ...seen('runner') },
+          paint: { 'line-width': 12, 'line-gradient': gradient('#fff', Date.now()) } },
+        { id: 'range', type: 'line', source: 'marathon', layout: { ...round, ...seen('runner') },
+          paint: { 'line-width': 7, 'line-gradient': gradient(RANGE, Date.now()) } },
       ],
     },
     bounds,
@@ -128,7 +182,7 @@ async function start() {
   document.getElementById('loading').remove();
   map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }));
   let loaded = false;
-  map.on('load', () => { loaded = true; update(); });
+  map.on('load', () => { loaded = true; setMode(mode); });
 
   const sheet = document.getElementById('sheet');
   const handle = document.getElementById('handle');
@@ -153,6 +207,41 @@ async function start() {
     };
     return { c, badge, li };
   });
+
+  for (let k = 2.5; k < MARATHON; k += 2.5) {
+    const el = document.createElement('div');
+    el.className = k % 10 ? 'km' : 'km major';
+    el.textContent = k;
+    new maplibregl.Marker({ element: el }).setLngLat(at(k)).addTo(map);
+  }
+  const near = () => document.body.classList.toggle('near', map.getZoom() >= 12.5);
+  map.on('zoom', near);
+  near();
+
+  // Roads or runner view. Both use the same clock and time travel.
+  const modeButtons = document.querySelectorAll('#mode button');
+  const setMode = (m) => {
+    mode = m;
+    localStorage.setItem('mode', m);
+    document.body.classList.toggle('runner', m === 'runner');
+    for (const b of modeButtons) b.setAttribute('aria-pressed', b.dataset.mode === m);
+    if (loaded) {
+      for (const id of ['10k', '5k', ...chunkIds]) map.setLayoutProperty(id, 'visibility', seen('roads').visibility);
+      for (const id of ['course', 'range-casing', 'range']) map.setLayoutProperty(id, 'visibility', seen('runner').visibility);
+    }
+    update();
+  };
+  for (const b of modeButtons) b.onclick = () => setMode(b.dataset.mode);
+
+  const form = document.getElementById('settings');
+  for (const k of ['start', 'from', 'to']) form.elements[k].value = runner[k];
+  form.oninput = () => {
+    if ([...form.elements].some((el) => el.name && !el.value)) return;
+    localStorage.setItem('runner', JSON.stringify({ start: form.elements.start.value, from: form.elements.from.value, to: form.elements.to.value }));
+    runner = loadRunner();
+    update();
+  };
+  form.onsubmit = (e) => e.preventDefault();
 
   map.on('click', chunkIds, (e) => {
     const { li } = items[e.features[0].properties.i];
@@ -187,7 +276,10 @@ async function start() {
       data.closures.forEach((c, i) => {
         for (const [k, v] of Object.entries(paint(c, now))) map.setPaintProperty(chunkIds[i], k, v);
       });
+      map.setPaintProperty('range-casing', 'line-gradient', gradient('#fff', now));
+      map.setPaintProperty('range', 'line-gradient', gradient(RANGE, now));
     }
+    if (mode === 'runner') return updateRunner(now);
     const sorted = items.map((it) => ({ ...it, st: status(it.c, now) })).sort((a, b) => a.st.next - b.st.next || a.c.n - b.c.n);
     for (const { c, badge, li, st } of sorted) {
       const t = left(st.next - now);
@@ -207,7 +299,23 @@ async function start() {
       ? `Next: ${upcoming.c.streets.split(' / ')[0]} ${upcoming.st.text} ${left(upcoming.st.next - now)}`
       : 'The marathon is over. Drive safe.';
   }
-  update();
+  function updateRunner(now) {
+    const { s, f1, f2, back, front } = runnerRange(runner, now);
+    const summary = document.getElementById('summary'), next = document.getElementById('next');
+    const finish = `finish ${runner.from} to ${runner.to}`;
+    if (now < s) {
+      summary.textContent = `Starts in ${left(s - now)}`;
+      next.textContent = `Start ${runner.start}, ${finish}`;
+    } else if (now < f2) {
+      summary.textContent = now < f1 ? `Between km ${kmText(back)} and ${kmText(front)}` : `Between km ${kmText(back)} and the finish`;
+      next.textContent = `Pace ${pace(f1 - s)} to ${pace(f2 - s)} per km, ${finish}`;
+    } else {
+      summary.textContent = 'Finished';
+      next.textContent = `Started ${runner.start}, ${finish}`;
+    }
+  }
+
+  setMode(mode);
   setInterval(update, 30e3);
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && update());
 }
