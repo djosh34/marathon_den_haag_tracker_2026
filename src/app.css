@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #1d2226;
+  --color-muted: #5f676d;
+  --color-paper: #f2f2f0;
+  --color-sign: #1c4e8a;
+  --color-closed: #e30613;
+  --color-gone: #9aa0a6;
+  --color-runner: #ff5a00;
+  --color-other: #8a7bb0;
+  --color-line: #e3e4e4;
+  --font-sans: Overpass, -apple-system, system-ui, sans-serif;
+}
+
+@layer base {
+  :root { --sheet-peek: calc(env(safe-area-inset-bottom) + 76px); }
+  html, body { height: 100%; }
+  body { @apply overflow-hidden bg-paper text-ink font-sans tabular-nums; line-height: 1.4; }
+  button { cursor: pointer; }
+}
+
+/* MapLibre places its controls; keep them clear of the notch and the sheet. */
+#map .maplibregl-ctrl-top-right { top: env(safe-area-inset-top); }
+#map .maplibregl-ctrl-bottom-right, #map .maplibregl-ctrl-bottom-left { bottom: var(--sheet-peek); }

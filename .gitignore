@@ -1,2 +1,7 @@
 node_modules/
 test-results/
+.svelte-kit/
+build/
+.DS_Store
+.scratch/
+test-output.txt
