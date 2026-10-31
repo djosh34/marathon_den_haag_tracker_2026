@@ -214,9 +214,6 @@ async function start() {
     el.textContent = k;
     new maplibregl.Marker({ element: el }).setLngLat(at(k)).addTo(map);
   }
-  const near = () => document.body.classList.toggle('near', map.getZoom() >= 12.5);
-  map.on('zoom', near);
-  near();
 
   // Roads or runner view. Both use the same clock and time travel.
   const modeButtons = document.querySelectorAll('#mode button');
@@ -263,7 +260,7 @@ async function start() {
   const panel = document.getElementById('travel');
   const slider = document.getElementById('slider');
   const [dayStart, dayEnd] = [Date.parse('2026-11-01T09:00:00+01:00'), Date.parse('2026-11-01T16:00:00+01:00')];
-  slider.min = dayStart; slider.max = dayEnd; slider.step = 5 * 60e3;
+  slider.min = dayStart; slider.max = dayEnd; slider.step = 60e3;
   const setTravel = (t) => {
     travel = t;
     document.body.classList.toggle('travelling', t !== null);

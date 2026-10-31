@@ -51,7 +51,7 @@ await tt.waitForTimeout(500);
 console.log(`time travel: slider to 13:30 shows ${ttText}, back to live shows ${await tt.textContent('#clock')}`);
 await tt.close();
 
-// Runner view: the same slider, the course with the runner's range and km markers.
+// Runner view: the same slider, the course with the runner's range and km markers every 2.5.
 const rv = await open('07:00:00');
 await rv.click('#mode [data-mode=runner]');
 await rv.click('#clock');
@@ -82,7 +82,8 @@ await rv.waitForTimeout(1500);
 await rv.screenshot({ path: 'screenshots/iphone17pro-runner-settings.png' });
 const r1230late = `"${await rv.textContent('#summary')}" "${await rv.textContent('#next')}"`;
 console.log(`runner settings: start 10:45 at 12:30 shows ${r1230late}, closure badges visible: ${roadBadges}`);
-const runnerOk = r1230.includes('Between km') && r1230late !== r1230 && roadBadges === 0;
+const allKm = (await kms(rv)).split(' ').length;
+const runnerOk = allKm === 16 && r1230.includes('Between km') && r1230late !== r1230 && roadBadges === 0;
 await rv.evaluate(() => localStorage.clear());
 await rv.close();
 
