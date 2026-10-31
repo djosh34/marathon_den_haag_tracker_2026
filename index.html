@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Marathon roads">
+<meta name="theme-color" content="#0b3d2e">
+<title>Marathon The Hague · road closures</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+<script src="vendor/pmtiles.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header>
+  <h1>Marathon road closures</h1>
+  <span id="clock"></span>
+</header>
+<div id="map"><div id="loading">Loading offline map…</div></div>
+<section id="list">
+  <p class="legend">
+    <span class="dot open"></span>open <span class="dot soon"></span>closes &lt; 30m
+    <span class="dot closed"></span>closed <span class="dot done"></span>reopened
+    <span class="line l10"></span>10K <span class="line l5"></span>5K
+  </p>
+  <ol id="rows"></ol>
+  <p class="note">Sun 1 Nov 2026. Times are indicative (official closure map): a road can close earlier or reopen later.</p>
+</section>
+<button id="update" hidden>New version available. Tap to update.</button>
+</body>
+</html>
