@@ -1,5 +1,5 @@
 // Bump VERSION to ship an update. Every file is cached at install and served from the cache only.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const FONTS = ['Noto Sans Regular', 'Noto Sans Medium', 'Noto Sans Italic'].flatMap((f) =>
   ['0-255', '256-511', '8192-8447'].map((r) => `map/fonts/${f}/${r}.pbf`));
 const FILES = [
