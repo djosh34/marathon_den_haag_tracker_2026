@@ -23,8 +23,11 @@ body {
 #map { position: fixed; inset: 0; }
 #loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); }
 
-#clock {
+#bar {
   position: fixed; z-index: 2; left: 12px; top: calc(env(safe-area-inset-top) + 10px);
+  display: flex; gap: 8px; align-items: center;
+}
+#clock {
   padding: 4px 11px 2px; border: 0; border-radius: 8px; background: var(--ink); color: #fff;
   font: 800 22px/1.3 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   cursor: pointer;
@@ -32,6 +35,15 @@ body {
 #clock::after { content: ' live'; font-size: 12px; font-weight: 600; opacity: 0.7; letter-spacing: 0; }
 .travelling #clock { background: var(--sign); }
 .travelling #clock::after { content: ' preview'; }
+#mode {
+  display: flex; padding: 3px; border-radius: 10px; background: var(--paper); box-shadow: 0 1px 6px rgb(29 34 38 / 0.25);
+}
+#mode button {
+  padding: 6px 10px 4px; border: 0; border-radius: 7px; background: none; color: var(--muted);
+  font: 700 14px/1.2 Overpass, system-ui, sans-serif; cursor: pointer;
+}
+#mode button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+#mode button:focus-visible { outline: 3px solid var(--sign); outline-offset: 1px; }
 #clock:focus-visible, #live:focus-visible { outline: 3px solid var(--closed); outline-offset: 2px; }
 
 #travel {
@@ -52,6 +64,17 @@ body {
   box-shadow: 0 0 0 1.5px #fff; pointer-events: none;
 }
 
+/* Course km markers: only in the runner view, every 10 km, every 2.5 km when zoomed in. */
+.km {
+  display: none; padding: 1px 3px 0; border-radius: 3px; background: var(--ink); color: #fff;
+  font: 700 10px/1.25 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px #fff; pointer-events: none;
+}
+.km.major { font-size: 12px; padding: 1px 4px 0; }
+.runner .badge { display: none; }
+.runner .km.major, .runner.near .km { display: block; }
+.runner .roads-only, body:not(.runner) .runner-only { display: none; }
+
 #sheet {
   position: fixed; z-index: 3; left: 0; right: 0; bottom: 0; height: 62dvh;
   display: flex; flex-direction: column;
@@ -59,7 +82,18 @@ body {
   transform: translateY(0); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 #sheet.collapsed { transform: translateY(calc(62dvh - var(--sheet-peek))); }
-@media (prefers-reduced-motion: reduce) { #sheet { transition: none; } }
+@media (prefers-reduced-motion: reduce) { /* Course km markers: only in the runner view, every 10 km, every 2.5 km when zoomed in. */
+.km {
+  display: none; padding: 1px 3px 0; border-radius: 3px; background: var(--ink); color: #fff;
+  font: 700 10px/1.25 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px #fff; pointer-events: none;
+}
+.km.major { font-size: 12px; padding: 1px 4px 0; }
+.runner .badge { display: none; }
+.runner .km.major, .runner.near .km { display: block; }
+.runner .roads-only, body:not(.runner) .runner-only { display: none; }
+
+#sheet { transition: none; } }
 
 #handle {
   display: grid; gap: 0 12px; grid-template-columns: 1fr; padding: 8px 16px 10px; border: 0;
@@ -79,6 +113,8 @@ body {
 .ramp { background: linear-gradient(90deg, #ff5a00, #ffb000, #3d8bd9, var(--sign)); }
 .gone { background: var(--gone); }
 .legend .closed { background: var(--closed); }
+.range { background: #ff5a00; }
+.legend .course { background: var(--ink); height: 3px !important; }
 .other { background: repeating-linear-gradient(90deg, #8a7bb0 0 5px, transparent 5px 8px); }
 
 ol { list-style: none; margin: 0; padding: 0; }
@@ -93,6 +129,15 @@ li .when { color: var(--muted); font-size: 13px; }
 li .left { grid-row: span 2; font-size: 19px; font-weight: 800; text-align: right; }
 li .left small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; }
 li.done .streets, li.done .left { color: var(--muted); font-weight: 600; }
+#settings .legend { grid-template-columns: 26px 1fr; }
+.fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 0 4px; }
+.fields label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.fields input {
+  width: 100%; min-width: 0; padding: 8px 6px 6px; border: 1px solid #c4c7c9; border-radius: 8px;
+  background: #fff; color: var(--ink); font: 800 19px/1.2 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  -webkit-appearance: none; appearance: none; text-align: center;
+}
+.fields input:focus-visible { outline: 3px solid var(--sign); outline-offset: 1px; }
 .note { color: var(--muted); font-size: 12px; max-width: 60ch; }
 
 #update {
