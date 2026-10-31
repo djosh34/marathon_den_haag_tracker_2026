@@ -180,7 +180,27 @@ async function start() {
     attributionControl: { compact: true },
   });
   document.getElementById('loading').remove();
-  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }));
+  const geo = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true });
+  map.addControl(geo);
+  // MapLibre shows no dot outside the map area and says nothing, so say why.
+  const toast = document.getElementById('toast');
+  let toastTimer;
+  const say = (text) => {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, 7000);
+  };
+  toast.onclick = () => { toast.hidden = true; };
+  geo.on('outofmaxbounds', (e) => {
+    const c = e.coords;
+    const km = c && Math.min(...data.routes.marathon.map(([lon, lat]) =>
+      Math.hypot((lat - c.latitude) * 111.2, (lon - c.longitude) * 111.2 * Math.cos(52.05 * Math.PI / 180))));
+    say(`You are ${km ? `${Math.round(km)} km` : 'too far'} from the course, outside the offline map. Your location shows once you are in The Hague.`);
+  });
+  geo.on('error', (e) => say(e.code === 1
+    ? 'Location is blocked. Allow it in Settings, Privacy and Security, Location Services, Safari Websites.'
+    : 'Could not find your location. Try again in a moment.'));
   let loaded = false;
   map.on('load', () => { loaded = true; setMode(mode); });
 

@@ -129,6 +129,13 @@ li.done .streets, li.done .left { color: var(--muted); font-weight: 600; }
 .fields select:focus-visible { outline: 3px solid var(--sign); outline-offset: 1px; }
 .note { color: var(--muted); font-size: 12px; max-width: 60ch; }
 
+#toast {
+  position: fixed; z-index: 4; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 64px);
+  padding: 12px 14px 10px; border: 0; border-radius: 10px; background: var(--ink); color: #fff; text-align: left;
+  font: 600 15px/1.35 Overpass, system-ui, sans-serif; box-shadow: 0 2px 12px rgb(29 34 38 / 0.3);
+}
+#toast[hidden] { display: none; }
+.travelling #toast { top: calc(env(safe-area-inset-top) + 126px); }
 #update {
   position: fixed; z-index: 4; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 118px);
   padding: 13px; border: 0; border-radius: 10px; background: var(--sign); color: #fff;
