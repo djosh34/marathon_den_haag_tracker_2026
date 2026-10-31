@@ -7,7 +7,7 @@ Live: https://djosh34.github.io/marathon_den_haag_tracker_2026/
 - Closure times come from the official closure map on the [travel info page](https://nnmarathonthehague.nl/en/travel-info/). The course GPX files come from the [course page](https://nnmarathonthehague.nl/en/course/). The times are indicative.
 - `tools/build_data.py` builds `data.js` from the GPX files and the closure list.
 - Map tiles: a Protomaps extract (`map/hague.pmtiles`, zoom 0–14).
-- Tap the clock to look at another time of race day with a slider. "Back to live" returns to now.
+- Tap the clock to look at another time of race day (09:00 to 16:00) with a slider. "Back to live" returns to now.
 - The Roads | Runner switch next to the clock changes the view. Runner hides the closures and shows, in orange, where a runner can be at the shown time, with km markers (every 10, every 2.5 when zoomed in). The start time and finish window are set in the sheet (default 10:15, finishing 14:00 to 14:30) and saved on the phone.
 - To ship a change, bump `VERSION` in `sw.js`. Open phones get a "tap to update" banner.
 

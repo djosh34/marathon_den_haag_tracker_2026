@@ -132,12 +132,12 @@ li.done .streets, li.done .left { color: var(--muted); font-weight: 600; }
 #settings .legend { grid-template-columns: 26px 1fr; }
 .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 0 4px; }
 .fields label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; }
-.fields input {
+.fields select {
   width: 100%; min-width: 0; padding: 8px 6px 6px; border: 1px solid #c4c7c9; border-radius: 8px;
   background: #fff; color: var(--ink); font: 800 19px/1.2 Overpass, system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  -webkit-appearance: none; appearance: none; text-align: center;
+  -webkit-appearance: none; appearance: none; text-align: center; text-align-last: center;
 }
-.fields input:focus-visible { outline: 3px solid var(--sign); outline-offset: 1px; }
+.fields select:focus-visible { outline: 3px solid var(--sign); outline-offset: 1px; }
 .note { color: var(--muted); font-size: 12px; max-width: 60ch; }
 
 #update {

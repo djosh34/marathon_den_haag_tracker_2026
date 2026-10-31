@@ -234,7 +234,14 @@ async function start() {
   for (const b of modeButtons) b.onclick = () => setMode(b.dataset.mode);
 
   const form = document.getElementById('settings');
-  for (const k of ['start', 'from', 'to']) form.elements[k].value = runner[k];
+  // Selects with our own labels, so the times are 24h whatever the phone's locale.
+  const times = [];
+  for (let m = 7 * 60; m <= 18 * 60; m += 5) times.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  for (const k of ['start', 'from', 'to']) {
+    const opts = [...new Set([...times, runner[k]])].sort();
+    form.elements[k].innerHTML = opts.map((t) => `<option>${t}</option>`).join('');
+    form.elements[k].value = runner[k];
+  }
   form.oninput = () => {
     if ([...form.elements].some((el) => el.name && !el.value)) return;
     localStorage.setItem('runner', JSON.stringify({ start: form.elements.start.value, from: form.elements.from.value, to: form.elements.to.value }));
@@ -255,7 +262,7 @@ async function start() {
   const clock = document.getElementById('clock');
   const panel = document.getElementById('travel');
   const slider = document.getElementById('slider');
-  const [dayStart, dayEnd] = [Date.parse('2026-11-01T04:00:00+01:00'), Date.parse('2026-11-01T22:00:00+01:00')];
+  const [dayStart, dayEnd] = [Date.parse('2026-11-01T09:00:00+01:00'), Date.parse('2026-11-01T16:00:00+01:00')];
   slider.min = dayStart; slider.max = dayEnd; slider.step = 5 * 60e3;
   const setTravel = (t) => {
     travel = t;
