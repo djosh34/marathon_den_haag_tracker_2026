@@ -24,7 +24,7 @@ export function pointAt(km) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
-// Km markers: every 2.5 km, of which the multiples of 10 also show zoomed out.
+// Km markers: every 2.5 km.
 export const MARKERS = Array.from({ length: Math.floor(KM / 2.5) }, (_, i) => (i + 1) * 2.5);
 
 const mins = (s) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));

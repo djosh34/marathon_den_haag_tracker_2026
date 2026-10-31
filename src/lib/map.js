@@ -105,16 +105,13 @@ export async function createMap(container, state, { onChunk }) {
     new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
     return el;
   };
-  const pill = 'pointer-events-none rounded px-1 pt-px text-[11px]/[1.25] font-bold text-white tabular-nums shadow-[0_0_0_1.5px_#fff]';
-  const badges = data.closures.map((c) => marker(`badge bg-closed ${pill}`, '', c.label));
-  const kms = MARKERS.map((km) => ({ km, el: marker(`km bg-ink ${pill}`, String(km), pointAt(km)) }));
+  const pill = 'pointer-events-none rounded font-bold text-white tabular-nums shadow-[0_0_0_1.5px_#fff]';
+  const small = 'px-1 pt-px text-[11px]/[1.25]';
+  const badges = data.closures.map((c) => marker(`badge bg-closed ${pill} ${small}`, '', c.label));
+  // The multiples of 10 are a little bigger.
+  const kms = MARKERS.map((km) => marker(`km bg-ink ${pill} ${km % 10 ? small : 'px-1.5 pt-px text-[13px]/[1.25]'}`, String(km), pointAt(km)));
 
   let current = state, loaded = false;
-  const showKms = () => {
-    const near = map.getZoom() >= 12.5;
-    for (const { km, el } of kms) el.hidden = current.mode !== 'runner' || !(near || km % 10 === 0);
-  };
-  map.on('zoom', showKms);
   map.on('load', () => { loaded = true; update(current); });
   map.on('click', chunkIds, (e) => current.mode === 'roads' && onChunk(e.features[0].properties.i));
 
@@ -130,7 +127,7 @@ export async function createMap(container, state, { onChunk }) {
       badges[i].hidden = s.mode !== 'roads' || st.state !== 'closed';
       badges[i].textContent = left(st.next - s.now);
     });
-    showKms();
+    for (const el of kms) el.hidden = s.mode !== 'runner';
   }
   update(state);
 

@@ -99,7 +99,7 @@
       aria-label="Time on race day"
       min={DAY_START}
       max={DAY_END}
-      step={5 * 60e3}
+      step={60e3}
       value={travel}
       oninput={(e) => (travel = Number(e.currentTarget.value))}
     />

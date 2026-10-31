@@ -61,6 +61,10 @@ await slide(tt, '13:30:00');
 await tt.waitForTimeout(3000);
 await shot(tt, 'timetravel-1330');
 const ttText = `${await text(tt, '#clock')} "${await text(tt, '#summary')}"`;
+await slide(tt, '13:31:00');
+await tt.waitForTimeout(500);
+const minute = await text(tt, '#clock');
+check(minute.startsWith('13:31') && await tt.getAttribute('#slider', 'step') === '60000', `slider moves in 1-minute steps (shows ${minute})`);
 await tt.click('#live');
 await tt.waitForTimeout(500);
 const back = await text(tt, '#clock');
@@ -103,8 +107,9 @@ check(Object.values(runnerAt).every((r) => r.badges === ''), 'no closure badges 
 await slide(rn, '12:30:00');
 await rn.waitForTimeout(1000);
 const out = await kms(rn);
+const all = '2.5 5 7.5 10 12.5 15 17.5 20 22.5 25 27.5 30 32.5 35 37.5 40';
 console.log(`km markers zoomed out: ${out.join(' ')}`);
-check(out.join(' ') === '10 20 30 40', '4 km markers zoomed out');
+check(out.join(' ') === all, 'all 16 km markers zoomed out');
 const box = await rn.locator('#map canvas').boundingBox();
 for (let i = 0; i < 2; i++) {
   await rn.mouse.dblclick(box.x + box.width / 2, box.y + box.height * 0.35);
@@ -112,7 +117,7 @@ for (let i = 0; i < 2; i++) {
 }
 const near = await kms(rn);
 console.log(`km markers zoomed in: ${near.join(' ')}`);
-check(near.length > 4 && near.includes('2.5'), 'more km markers zoomed in (every 2.5 km)');
+check(near.join(' ') === all, 'all 16 km markers zoomed in');
 await shot(rn, 'runner-1230-zoomed');
 
 await rn.click('#handle');
